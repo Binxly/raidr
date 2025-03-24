@@ -44,6 +44,22 @@ const CHALLENGE_COMMAND = {
   contexts: [0, 2],
 };
 
-const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND];
+const UPDATE_MONGO_COMMAND = {
+  name: 'mongo',
+  description: 'Save a message to MongoDB',
+  type: 1,
+  options: [
+    {
+      name: 'message',
+      description: 'The message to save',
+      type: 3,
+      required: true,
+    },
+  ],
+  integration_types: [0, 1],
+  contexts: [0, 1, 2],
+};
+
+const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND, UPDATE_MONGO_COMMAND];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);

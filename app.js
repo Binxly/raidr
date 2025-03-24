@@ -10,6 +10,7 @@ import {
 } from 'discord-interactions';
 import { getRandomEmoji, DiscordRequest } from './utils.js';
 import { getShuffledOptions, getResult } from './game.js';
+import { MongoClient } from "mongodb";
 
 // Create an express app
 const app = express();
@@ -19,6 +20,9 @@ const PORT = process.env.PORT || 3000;
 //FIXME: Store for in-progress games. In production, needs a DB
 const activeGames = {};
 
+// MONGODB
+const client = new MongoClient(process.env.MONGODB_URI);
+
 /**
  * Interactions endpoint URL where Discord will send HTTP requests
  * Parse request body and verifies incoming requests using discord-interactions package
@@ -26,6 +30,8 @@ const activeGames = {};
 app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async function (req, res) {
   // Interaction id, type and data
   const { id, type, data } = req.body;
+  // DEBUG Log the interaction body
+  console.log('Discord Interaction Body: ', JSON.stringify(req.body, null, 2));
 
   /**
    * Handle verification requests
@@ -49,6 +55,30 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         data: {
           // Fetches a random emoji to send from a helper function
           content: `hello world ${getRandomEmoji()}`,
+        },
+      });
+    }
+
+    if (name === 'mongo') {
+      // Saves a message to MongoDB, with the user's ID
+      const context = req.body.context;
+      // User ID is in user field for (G)DMs, and member for servers
+      const userId = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const userName = context === 0 ? req.body.member.user.global_name : req.body.user.global_name;
+      const message = req.body.data.options[0].value;
+      
+      // Save to MongoDB
+      await client.connect();
+      const db = client.db('discord');
+      const collection = db.collection('messages');
+      await collection.insertOne({ userId, userName, message });
+      await client.close();
+      
+      // Send a message into the channel where command was triggered from
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `Message saved to MongoDB`,
         },
       });
     }
